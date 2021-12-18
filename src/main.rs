@@ -8,10 +8,13 @@ fn main() {
     let value = arguments.next().expect("Missing Value");
     println!("The key is '{}', and the value is '{}'", key, value);
 
-    let contents = format!("{}\t{}\n",key,value);
+    // let contents = format!("{}\t{}\n",key,value);
 
-    std::fs::write("kv.db", contents).unwrap();
-    let database = Database::new().expect("Database Creation Failed");
+    // std::fs::write("kv.db", contents).unwrap();
+    let mut database = Database::new().expect("Database Creation Failed");
+    database.insert(key.to_uppercase(), value.clone());
+    database.insert(key, value);
+    database.flush().unwrap();
     // match write_result {
     //     Ok(()) => {
             
@@ -27,6 +30,7 @@ fn main() {
 
 struct Database {
     map: HashMap<String, String>,
+    flush: bool,
 }
 
 impl Database {
@@ -47,9 +51,40 @@ impl Database {
             let (key, value) = line.split_once('\t').expect("Corrupt Database");
             map.insert(key.to_owned(), value.to_owned());
         }
-        Ok(Database { map: map })
+        Ok(Database { map, flush: false })
+    }
+
+    fn insert(&mut self, key: String, value: String) {
+        self.map.insert(key,value);
+    }
+    // Makes sure that noone else can touch the database after flush
+    // Ensures flush is the last thing we do
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.flush = true;
+        do_flush(&self)
+
     }
 }
 
+impl Drop for Database {
+    fn drop(&mut self) {
+        if !self.flush {
+            let _ = do_flush(self);
+        }
+
+    }
+}
+
+fn do_flush(database: &Database)  -> std::io::Result<()>{
+    let mut contents = String::new();
+    for (key, value) in &database.map {
+        // let kvpair = format!("{}\t{}\n", key, value);
+        contents.push_str(key);
+        contents.push('\t');
+        contents.push_str(value);
+        contents.push('\n');
+    }
+    std::fs::write("kv.db", contents)
+}
 // File structure:
 // mykey\tmyvalue\nmykey\tmyvalue\n
