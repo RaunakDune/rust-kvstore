@@ -11,7 +11,7 @@ fn main() {
     let contents = format!("{}\t{}\n",key,value);
 
     std::fs::write("kv.db", contents).unwrap();
-    let database = Database::new().expect("Database::new() crashed");
+    let database = Database::new().expect("Database Creation Failed");
     // match write_result {
     //     Ok(()) => {
             
@@ -38,17 +38,16 @@ impl Database {
         //          return Err(error);
         //     }
         // };
-
-        let contents = std::fs::read_to_string("kv.db")?;
-        for line in contents.lines() {
-            let pair = line.split_once('\t').expect("Corrupt Database");
-            
-        }
         // parse
         // populate
-        Ok(Database {
-            map: HashMap::new(),
-        })
+
+        let mut map = HashMap::new();
+        let contents = std::fs::read_to_string("kv.db")?;
+        for line in contents.lines() {
+            let (key, value) = line.split_once('\t').expect("Corrupt Database");
+            map.insert(key.to_owned(), value.to_owned());
+        }
+        Ok(Database { map: map })
     }
 }
 
